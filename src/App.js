@@ -24,7 +24,6 @@ export default function MyPlanApp() {
   
   // --- LOCALSTORAGE ФУНКЦИЯЛАРЫ (САҚТАУ ҮШІН) ---
 
-  // 1. Оқушыларды жүктеу және сақтау
   const [students, setStudents] = useState(() => {
     const saved = localStorage.getItem('myApp_students');
     return saved ? JSON.parse(saved) : INITIAL_STUDENTS;
@@ -34,7 +33,6 @@ export default function MyPlanApp() {
     localStorage.setItem('myApp_students', JSON.stringify(students));
   }, [students]);
 
-  // 2. Универ тапсырмаларын жүктеу және сақтау
   const [uniTasks, setUniTasks] = useState(() => {
     const saved = localStorage.getItem('myApp_tasks');
     return saved ? JSON.parse(saved) : [];
@@ -44,7 +42,6 @@ export default function MyPlanApp() {
     localStorage.setItem('myApp_tasks', JSON.stringify(uniTasks));
   }, [uniTasks]);
 
-  // 3. Қаржы транзакцияларын жүктеу және сақтау
   const [transactions, setTransactions] = useState(() => {
     const saved = localStorage.getItem('myApp_transactions');
     return saved ? JSON.parse(saved) : [];
@@ -54,7 +51,6 @@ export default function MyPlanApp() {
     localStorage.setItem('myApp_transactions', JSON.stringify(transactions));
   }, [transactions]);
 
-  // 4. Жазбаларды (Notes) жүктеу және сақтау
   const [notes, setNotes] = useState(() => {
     const saved = localStorage.getItem('myApp_notes');
     return saved ? JSON.parse(saved) : [];
@@ -181,6 +177,7 @@ export default function MyPlanApp() {
     setNewNote({ content: '', time: '' });
   };
 
+  // АЙЛЫҚ БОЛЖАМ (Мұнда бәрі қосылады: Айлық + (Апталық * 4))
   const calculateProjectedMonthlyIncome = () => {
     let total = 0;
     students.forEach(student => {
@@ -197,14 +194,15 @@ export default function MyPlanApp() {
     return total;
   };
 
+  // АПТАЛЫҚ БОЛЖАМ (Мұнда тек Апталық және Күнделікті қосылады)
   const calculateProjectedWeeklyIncome = () => {
     let total = 0;
     students.forEach(student => {
-      if (student.paymentType === 'monthly') {
-        total += student.amount / 4;
-      } else if (student.paymentType === 'weekly') {
+      // "MONTHLY" ТӨЛЕМДЕРДІ ТАЗА АЛЫП ТАСТАДЫҚ
+      if (student.paymentType === 'weekly') {
         total += student.amount;
       } else if (student.paymentType === 'daily') {
+        // Күнделікті төлейтіндер аптасына (Баға * Сабақ саны) әкеледі
         total += student.amount * student.schedule.length;
       }
     });
@@ -399,7 +397,7 @@ export default function MyPlanApp() {
                                 <tr><td colSpan="6" className="p-8 text-center text-gray-400">Оқушылар тіркелмеген</td></tr>
                             ) : (
                                 students.map(student => {
-                                    // ЕСЕПТЕУ ЛОГИКАСЫ ӨЗГЕРТІЛДІ
+                                    // ЕСЕПТЕУ ЛОГИКАСЫ
                                     let displayAmount = 0;
                                     let periodLabel = '';
 
@@ -412,7 +410,6 @@ export default function MyPlanApp() {
                                         periodLabel = '/апта';
                                     }
                                     else if(student.paymentType === 'monthly') {
-                                        // Айлық болса БӨЛМЕЙМІЗ!
                                         displayAmount = student.amount;
                                         periodLabel = '/ай';
                                     }
@@ -421,7 +418,6 @@ export default function MyPlanApp() {
                                     <tr key={student.id} className="hover:bg-gray-50 transition">
                                         <td className="p-4">
                                             <div className="font-medium text-gray-800">{student.name}</div>
-                                            {/* Тек monthly болса дата көрсетеміз */}
                                             {student.paymentType === 'monthly' && (
                                                 <div className="text-xs text-gray-400 mt-1">
                                                     {student.startDate} - {student.endDate}
