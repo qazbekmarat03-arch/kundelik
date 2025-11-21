@@ -64,7 +64,7 @@ export default function MyPlanApp() {
     localStorage.setItem('myApp_notes', JSON.stringify(notes));
   }, [notes]);
 
-  // --- ҚАЛҒАН КОДТАР (ӨЗГЕРІССІЗ) ---
+  // --- ҚАЛҒАН КОДТАР ---
 
   const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, message: '', onConfirm: null });
@@ -241,6 +241,15 @@ export default function MyPlanApp() {
                  </div>
              </div>
         );
+    } else if (newStudent.paymentType === 'monthly') {
+        return (
+             <div className="bg-purple-50 p-3 rounded-lg text-sm text-purple-800 mt-2 border border-purple-100">
+                 <div className="flex justify-between">
+                    <span>Айлық табыс (Толық):</span>
+                    <span className="font-bold">{amt.toLocaleString()} ₸</span>
+                 </div>
+             </div>
+        );
     }
     return null;
   };
@@ -361,7 +370,6 @@ export default function MyPlanApp() {
                 </div>
                 <button onClick={() => setIsStudentModalOpen(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition shadow-lg shadow-indigo-200 text-sm font-medium">
                     <Plus size={18} />
-                    <Plus size={18} />
                     Оқушы қосу
                 </button>
             </div>
@@ -382,7 +390,7 @@ export default function MyPlanApp() {
                                 <th className="p-4">Кестесі</th>
                                 <th className="p-4">Төлем түрі</th>
                                 <th className="p-4">Бағасы</th>
-                                <th className="p-4">Апталық есеп</th>
+                                <th className="p-4">Төлем есебі</th>
                                 <th className="p-4 text-right">Әрекет</th>
                             </tr>
                         </thead>
@@ -391,14 +399,23 @@ export default function MyPlanApp() {
                                 <tr><td colSpan="6" className="p-8 text-center text-gray-400">Оқушылар тіркелмеген</td></tr>
                             ) : (
                                 students.map(student => {
-                                    // Апталық соманы есептеу (Table үшін)
-                                    let weeklyCalc = 0;
+                                    // ЕСЕПТЕУ ЛОГИКАСЫ ӨЗГЕРТІЛДІ
+                                    let displayAmount = 0;
+                                    let periodLabel = '';
+
                                     if(student.paymentType === 'daily') {
-                                        // Сабақ бағасы * Сабақ саны
-                                        weeklyCalc = student.amount * student.schedule.length;
+                                        displayAmount = student.amount * student.schedule.length;
+                                        periodLabel = '/апта';
                                     }
-                                    else if(student.paymentType === 'weekly') weeklyCalc = student.amount;
-                                    else if(student.paymentType === 'monthly') weeklyCalc = Math.round(student.amount / 4);
+                                    else if(student.paymentType === 'weekly') {
+                                        displayAmount = student.amount;
+                                        periodLabel = '/апта';
+                                    }
+                                    else if(student.paymentType === 'monthly') {
+                                        // Айлық болса БӨЛМЕЙМІЗ!
+                                        displayAmount = student.amount;
+                                        periodLabel = '/ай';
+                                    }
 
                                     return (
                                     <tr key={student.id} className="hover:bg-gray-50 transition">
@@ -432,8 +449,8 @@ export default function MyPlanApp() {
                                             </span>
                                         </td>
                                         <td className="p-4 text-green-600 font-bold">
-                                            {weeklyCalc.toLocaleString()} ₸ 
-                                            <span className="text-xs font-normal text-gray-400 ml-1">/апта</span>
+                                            {displayAmount.toLocaleString()} ₸ 
+                                            <span className="text-xs font-normal text-gray-400 ml-1">{periodLabel}</span>
                                         </td>
                                         <td className="p-4 text-right">
                                             <button 
