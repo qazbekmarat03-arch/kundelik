@@ -1,61 +1,74 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar, CheckSquare, DollarSign, BookOpen, Plus, Trash2, Clock, Briefcase, GraduationCap, X, TrendingDown, AlertCircle, Calculator } from 'lucide-react';
 
 // Тұрақты деректер (Constants)
 const DAYS = ['Дүйсенбі', 'Сейсенбі', 'Сәрсенбі', 'Бейсенбі', 'Жұма', 'Сенбі', 'Жексенбі'];
 const TIMES = Array.from({ length: 15 }, (_, i) => i + 9); // 9:00 to 23:00
 
-// Негізгі компонент
-export default function MyPlanApp() {
-  const [activeTab, setActiveTab] = useState('work');
-  
-  // Мәліметтер базасы (State)
-  const [students, setStudents] = useState([
+// Бастапқы деректер (Егер жад бос болса, осылар шығады)
+const INITIAL_STUDENTS = [
     { 
         id: 1, 
-        name: 'Алихан', 
-        schedule: [
-            { day: 'Дүйсенбі', time: 15 }, 
-            { day: 'Жұма', time: 15 }
-        ], 
+        name: 'Алихан (Мысал)', 
+        schedule: [{ day: 'Дүйсенбі', time: 15 }, { day: 'Жұма', time: 15 }], 
         paymentType: 'monthly', 
         amount: 25000,
         startDate: '2023-11-01',
         endDate: '2023-12-01'
-    },
-    { 
-        id: 2, 
-        name: 'Айгерім', 
-        schedule: [
-            { day: 'Сейсенбі', time: 10 },
-            { day: 'Бейсенбі', time: 14 },
-            { day: 'Сенбі', time: 11 }
-        ], 
-        paymentType: 'daily', 
-        amount: 5000, // Сабағына 5000
-        startDate: '', // Керек емес
-        endDate: ''   // Керек емес
     }
-  ]);
+];
 
-  const [uniTasks, setUniTasks] = useState([
-    { id: 1, title: 'Философия эссе жазу', deadline: '2023-11-25', completed: false },
-    { id: 2, title: 'Математика бақылауға дайындық', deadline: '2023-11-28', completed: true }
-  ]);
+// Негізгі компонент
+export default function MyPlanApp() {
+  const [activeTab, setActiveTab] = useState('work');
+  
+  // --- LOCALSTORAGE ФУНКЦИЯЛАРЫ (САҚТАУ ҮШІН) ---
 
-  // Транзакциялар тарихы (Бастапқыда бос)
-  const [transactions, setTransactions] = useState([]);
+  // 1. Оқушыларды жүктеу және сақтау
+  const [students, setStudents] = useState(() => {
+    const saved = localStorage.getItem('myApp_students');
+    return saved ? JSON.parse(saved) : INITIAL_STUDENTS;
+  });
 
-  const [notes, setNotes] = useState([
-    { id: 1, content: 'Ертең кітапханаға бару керек', time: '10:00' },
-    { id: 2, content: 'Залға жазылу', time: '19:00' }
-  ]);
+  useEffect(() => {
+    localStorage.setItem('myApp_students', JSON.stringify(students));
+  }, [students]);
 
-  // Модальды терезелерді басқару
+  // 2. Универ тапсырмаларын жүктеу және сақтау
+  const [uniTasks, setUniTasks] = useState(() => {
+    const saved = localStorage.getItem('myApp_tasks');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('myApp_tasks', JSON.stringify(uniTasks));
+  }, [uniTasks]);
+
+  // 3. Қаржы транзакцияларын жүктеу және сақтау
+  const [transactions, setTransactions] = useState(() => {
+    const saved = localStorage.getItem('myApp_transactions');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('myApp_transactions', JSON.stringify(transactions));
+  }, [transactions]);
+
+  // 4. Жазбаларды (Notes) жүктеу және сақтау
+  const [notes, setNotes] = useState(() => {
+    const saved = localStorage.getItem('myApp_notes');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('myApp_notes', JSON.stringify(notes));
+  }, [notes]);
+
+  // --- ҚАЛҒАН КОДТАР (ӨЗГЕРІССІЗ) ---
+
   const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, message: '', onConfirm: null });
 
-  // Жаңа оқушы қосу формасы
   const [newStudent, setNewStudent] = useState({ 
     name: '', 
     schedule: [], 
@@ -104,11 +117,9 @@ export default function MyPlanApp() {
   const addStudent = () => {
     if (!newStudent.name || !newStudent.amount || newStudent.schedule.length === 0) return;
     
-    // Егер monthly болмаса, даталарды тазалаймыз
     let finalStartDate = newStudent.paymentType === 'monthly' ? newStudent.startDate : '';
     let finalEndDate = newStudent.paymentType === 'monthly' ? newStudent.endDate : '';
 
-    // Monthly үшін default дата қою
     if (newStudent.paymentType === 'monthly' && !finalEndDate && finalStartDate) {
         const date = new Date(finalStartDate);
         date.setMonth(date.getMonth() + 1);
@@ -152,14 +163,12 @@ export default function MyPlanApp() {
     setNewTask({ title: '', deadline: '' });
   };
 
-  // Транзакция қосу
   const addTransaction = () => {
     if (!newTransaction.amount) return;
     setTransactions([...transactions, { ...newTransaction, id: Date.now(), amount: parseInt(newTransaction.amount), date: new Date().toISOString().split('T')[0] }]);
     setNewTransaction({ type: 'expense', amount: '', category: '' });
   };
 
-  // Транзакцияны өшіру
   const deleteTransaction = (id) => {
     openConfirmModal('Бұл жазбаны тарихтан өшіргіңіз келе ме?', () => {
         setTransactions(prev => prev.filter(t => t.id !== id));
@@ -172,18 +181,14 @@ export default function MyPlanApp() {
     setNewNote({ content: '', time: '' });
   };
 
-  // Айлық табыс есебі (Monthly Calculation)
   const calculateProjectedMonthlyIncome = () => {
     let total = 0;
     students.forEach(student => {
       if (student.paymentType === 'monthly') {
-        // Тікелей айлық сома
         total += student.amount;
       } else if (student.paymentType === 'weekly') {
-        // Апталық сома * 4
         total += student.amount * 4;
       } else if (student.paymentType === 'daily') {
-        // (Бір сабақ бағасы * Сабақ саны) * 4 апта
         const lessonsPerWeek = student.schedule.length;
         const weeklyIncome = student.amount * lessonsPerWeek;
         total += weeklyIncome * 4;
@@ -192,24 +197,20 @@ export default function MyPlanApp() {
     return total;
   };
 
-  // Апталық табыс есебі (Weekly Calculation)
   const calculateProjectedWeeklyIncome = () => {
     let total = 0;
     students.forEach(student => {
       if (student.paymentType === 'monthly') {
-        // Айына төлейтіндерді шамамен 4-ке бөлеміз
         total += student.amount / 4;
       } else if (student.paymentType === 'weekly') {
         total += student.amount;
       } else if (student.paymentType === 'daily') {
-        // Бір сабақ бағасы * Сабақ саны
         total += student.amount * student.schedule.length;
       }
     });
     return total;
   };
 
-  // Модаль ішіндегі болжамды көрсету (Helper Function)
   const getCalculatedPreview = () => {
     const amt = parseInt(newStudent.amount) || 0;
     const lessonCount = newStudent.schedule.length;
@@ -359,6 +360,7 @@ export default function MyPlanApp() {
                     </div>
                 </div>
                 <button onClick={() => setIsStudentModalOpen(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition shadow-lg shadow-indigo-200 text-sm font-medium">
+                    <Plus size={18} />
                     <Plus size={18} />
                     Оқушы қосу
                 </button>
@@ -512,7 +514,7 @@ export default function MyPlanApp() {
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                         <div>
+                          <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Төлем түрі</label>
                             <select 
                               className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-gray-50"
@@ -836,6 +838,7 @@ function DesktopNavLink({ active, onClick, icon, label }) {
         </button>
     )
 }
+
 function FinanceCard({ title, amount, color, icon }) {
     return (
         <div className={`rounded-xl p-5 shadow-sm border border-gray-100 bg-white`}>
