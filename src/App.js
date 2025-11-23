@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, CheckSquare, DollarSign, Plus, Trash2, Clock, Briefcase, GraduationCap, X, TrendingDown, Sparkles, ChevronLeft, ChevronRight, Save, CheckCircle, AlertCircle, CreditCard, PieChart } from 'lucide-react';
+import { Calendar, CheckSquare, DollarSign, Plus, Trash2, Clock, Briefcase, GraduationCap, X, TrendingDown, Sparkles, ChevronLeft, ChevronRight, Save, CheckCircle, AlertCircle, CreditCard, PieChart, RefreshCw } from 'lucide-react';
 
 // --- ТҰРАҚТЫЛАР ---
 const TIMES = Array.from({ length: 15 }, (_, i) => i + 9); // 9:00 - 23:00
@@ -34,7 +34,6 @@ const getMonthName = (date) => {
   return months[date.getMonth()];
 };
 
-// Екі датаның айы мен жылы бірдей ме екенін тексереді
 const isSameMonth = (d1, d2) => d1.getMonth() === d2.getMonth() && d1.getFullYear() === d2.getFullYear();
 
 const WEEK_DAYS_KZ = ['Дүйсенбі', 'Сейсенбі', 'Сәрсенбі', 'Бейсенбі', 'Жұма', 'Сенбі', 'Жексенбі'];
@@ -46,45 +45,46 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('work');
   
   // --- ДЕРЕКТЕР (STATE) ---
+  // ЕСКЕРТУ: v4-ке ауыстырдым, ескі деректерден тазару үшін
   const [currentDate, setCurrentDate] = useState(new Date()); 
 
   const [students, setStudents] = useState(() => {
-    const saved = localStorage.getItem('myApp_students_v3');
+    const saved = localStorage.getItem('myApp_students_v4');
     return saved ? JSON.parse(saved) : INITIAL_STUDENTS;
   });
 
   const [completedLessons, setCompletedLessons] = useState(() => {
-    const saved = localStorage.getItem('myApp_completed_lessons');
+    const saved = localStorage.getItem('myApp_completed_lessons_v4');
     return saved ? JSON.parse(saved) : {};
   });
 
   const [deposit, setDeposit] = useState(() => {
-    const saved = localStorage.getItem('myApp_deposit');
+    const saved = localStorage.getItem('myApp_deposit_v4');
     return saved ? parseFloat(saved) : 0;
   });
 
   const [uniTasks, setUniTasks] = useState(() => {
-    const saved = localStorage.getItem('myApp_tasks');
+    const saved = localStorage.getItem('myApp_tasks_v4');
     return saved ? JSON.parse(saved) : [];
   });
 
   const [transactions, setTransactions] = useState(() => {
-    const saved = localStorage.getItem('myApp_transactions');
+    const saved = localStorage.getItem('myApp_transactions_v4');
     return saved ? JSON.parse(saved) : [];
   });
 
   const [notes, setNotes] = useState(() => {
-    const saved = localStorage.getItem('myApp_notes');
+    const saved = localStorage.getItem('myApp_notes_v4');
     return saved ? JSON.parse(saved) : [];
   });
 
   // --- LOCAL STORAGE SAVE ---
-  useEffect(() => { localStorage.setItem('myApp_students_v3', JSON.stringify(students)); }, [students]);
-  useEffect(() => { localStorage.setItem('myApp_completed_lessons', JSON.stringify(completedLessons)); }, [completedLessons]);
-  useEffect(() => { localStorage.setItem('myApp_deposit', JSON.stringify(deposit)); }, [deposit]);
-  useEffect(() => { localStorage.setItem('myApp_tasks', JSON.stringify(uniTasks)); }, [uniTasks]);
-  useEffect(() => { localStorage.setItem('myApp_transactions', JSON.stringify(transactions)); }, [transactions]);
-  useEffect(() => { localStorage.setItem('myApp_notes', JSON.stringify(notes)); }, [notes]);
+  useEffect(() => { localStorage.setItem('myApp_students_v4', JSON.stringify(students)); }, [students]);
+  useEffect(() => { localStorage.setItem('myApp_completed_lessons_v4', JSON.stringify(completedLessons)); }, [completedLessons]);
+  useEffect(() => { localStorage.setItem('myApp_deposit_v4', JSON.stringify(deposit)); }, [deposit]);
+  useEffect(() => { localStorage.setItem('myApp_tasks_v4', JSON.stringify(uniTasks)); }, [uniTasks]);
+  useEffect(() => { localStorage.setItem('myApp_transactions_v4', JSON.stringify(transactions)); }, [transactions]);
+  useEffect(() => { localStorage.setItem('myApp_notes_v4', JSON.stringify(notes)); }, [notes]);
 
   // --- UI STATE ---
   const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
@@ -100,20 +100,15 @@ export default function App() {
   const [depositInput, setDepositInput] = useState('');
 
   // --- ЕСЕПТЕУ ЛОГИКАСЫ ---
-
-  // 1 сабақтың құнын есептеу
   const getLessonCost = (student) => {
     const amt = parseInt(student.amount) || 0;
     const lessonsPerWeek = student.schedule.length || 1;
-    
     if (student.paymentType === 'daily') return amt; 
     if (student.paymentType === 'weekly') return amt / lessonsPerWeek; 
-    if (student.paymentType === 'monthly') return 0; // Айлық оқушы апталық есепке қосылмайды
-    
+    if (student.paymentType === 'monthly') return 0; 
     return 0;
   };
 
-  // Белгілі бір уақыт аралығындағы НАҚТЫ табыс (Checkbox қойылғандар)
   const calculateRealIncome = (startDate, endDate) => {
     let total = 0;
     Object.keys(completedLessons).forEach(key => {
@@ -127,7 +122,6 @@ export default function App() {
     return Math.round(total);
   };
 
-  // КҮНДЕРДІ АНЫҚТАУ
   const currentWeekStart = getStartOfWeek(currentDate);
   const currentWeekEnd = new Date(currentWeekStart);
   currentWeekEnd.setDate(currentWeekEnd.getDate() + 6);
@@ -147,7 +141,7 @@ export default function App() {
   const realWeeklyLessonIncome = calculateRealIncome(currentWeekStart, currentWeekEnd);
   const currentWeekBalance = realWeeklyLessonIncome + weeklyOtherIncome - weeklyExpenses;
 
-  // 2. АЙЛЫҚ ЕСЕП (ЖАҢА КАРТОЧКА ҮШІН)
+  // 2. АЙЛЫҚ ЕСЕП
   const monthlyTransactions = transactions.filter(t => {
     const tDate = new Date(t.date);
     return tDate >= currentMonthStart && tDate <= currentMonthEnd;
@@ -157,13 +151,12 @@ export default function App() {
   const realMonthlyLessonIncome = calculateRealIncome(currentMonthStart, currentMonthEnd);
   const currentMonthBalance = realMonthlyLessonIncome + monthlyOtherIncome - monthlyExpenses;
 
-  // 3. АЙЛЫҚ ОҚУШЫЛАРДАН ТҮСКЕН АҚША (ИНФО ҮШІН)
+  // 3. АЙЛЫҚ ОҚУШЫЛАРДАН ТҮСКЕН АҚША
   const collectedMonthlyIncome = transactions
     .filter(t => t.type === 'income' && t.category.startsWith('Айлық') && isSameMonth(new Date(t.date), currentDate))
     .reduce((acc, t) => acc + t.amount, 0);
 
   // --- ФУНКЦИЯЛАР ---
-
   const changeWeek = (direction) => {
     const newDate = new Date(currentDate);
     newDate.setDate(currentDate.getDate() + (direction * 7));
@@ -201,21 +194,25 @@ export default function App() {
       });
   };
 
-  // AI Функциясы
+  const clearAllData = () => {
+      if (window.confirm('Барлық деректерді (оқушылар, қаржы, жоспар) өшіріп, басынан бастайсыз ба?')) {
+          localStorage.clear();
+          window.location.reload();
+      }
+  };
+
   const copyDataForAI = () => {
     const summary = `Сәлем! Менің қаржылық есебім (${getMonthName(currentDate)} айы):
-
-📅 Апта: ${formatDisplayDate(currentWeekStart)} - ${formatDisplayDate(currentWeekEnd)}
-💰 АПТАЛЫҚ БАЛАНС: ${currentWeekBalance.toLocaleString()} ₸
-💰 АЙЛЫҚ БАЛАНС: ${currentMonthBalance.toLocaleString()} ₸
-
-📊 Деректер:
-- Апталық сабақтар: ${realWeeklyLessonIncome.toLocaleString()} ₸
-- Осы айда жиналған айлық төлемдер: ${collectedMonthlyIncome.toLocaleString()} ₸
-- Шығыстар (Апта/Ай): ${weeklyExpenses.toLocaleString()} / ${monthlyExpenses.toLocaleString()} ₸
-- Депозит: ${deposit.toLocaleString()} ₸
-
-Кеңес берші.`;
+    
+    Апта: ${formatDisplayDate(currentWeekStart)} - ${formatDisplayDate(currentWeekEnd)}
+    АПТАЛЫҚ БАЛАНС: ${currentWeekBalance.toLocaleString()} ₸
+    АЙЛЫҚ БАЛАНС: ${currentMonthBalance.toLocaleString()} ₸
+    
+    Деректер:
+    - Апталық сабақтар: ${realWeeklyLessonIncome.toLocaleString()} ₸
+    - Осы айда жиналған айлық төлемдер: ${collectedMonthlyIncome.toLocaleString()} ₸
+    - Шығыстар (Апта/Ай): ${weeklyExpenses.toLocaleString()} / ${monthlyExpenses.toLocaleString()} ₸
+    - Депозит: ${deposit.toLocaleString()} ₸`;
 
     const copyToClipboard = (text) => {
         if (navigator.clipboard && window.isSecureContext) {
@@ -267,15 +264,10 @@ export default function App() {
   const addTransaction = () => { if (newTransaction.amount) { setTransactions([...transactions, { ...newTransaction, id: Date.now(), amount: parseInt(newTransaction.amount), date: new Date().toISOString().split('T')[0] }]); setNewTransaction({ type: 'expense', amount: '', category: '' }); }};
   const deleteTransaction = (id) => { setTransactions(prev => prev.filter(t => t.id !== id)); };
   
-  // --- ЖАЗБАЛАР (NOTES) ФУНКЦИЯЛАРЫ ---
   const addNote = () => { 
       if (newNote.content) { 
           setNotes([...notes, { 
-              ...newNote, 
-              id: Date.now(), 
-              date: new Date().toISOString(),
-              completed: false,
-              completedDate: null
+              ...newNote, id: Date.now(), date: new Date().toISOString(), completed: false, completedDate: null
           }]); 
           setNewNote({ content: '', time: '' }); 
       }
@@ -285,11 +277,7 @@ export default function App() {
       setNotes(notes.map(n => {
           if (n.id === id) {
               const isCompleting = !n.completed;
-              return {
-                  ...n,
-                  completed: isCompleting,
-                  completedDate: isCompleting ? new Date().toISOString() : null
-              };
+              return { ...n, completed: isCompleting, completedDate: isCompleting ? new Date().toISOString() : null };
           }
           return n;
       }));
@@ -377,21 +365,21 @@ export default function App() {
       </div>
 
       {/* DESKTOP SIDEBAR */}
-      <div className="hidden md:flex flex-col w-64 bg-white h-screen border-r fixed shadow-sm">
-        <div className="p-6 flex items-center gap-3 text-indigo-600">
-          <div className="bg-indigo-100 p-2 rounded-lg"><Calendar size={24} /></div>
-          <h1 className="text-xl font-bold tracking-tight">My Plan Pro</h1>
+      <div className="hidden md:flex flex-col w-64 bg-white h-screen border-r fixed shadow-sm flex justify-between">
+        <div>
+            <div className="p-6 flex items-center gap-3 text-indigo-600">
+            <div className="bg-indigo-100 p-2 rounded-lg"><Calendar size={24} /></div>
+            <h1 className="text-xl font-bold tracking-tight">My Plan Pro</h1>
+            </div>
+            <nav className="flex-1 px-4 space-y-2 mt-4">
+            <DesktopNavLink active={activeTab === 'work'} onClick={() => setActiveTab('work')} icon={<Briefcase size={20} />} label="Кесте & Сабақ" />
+            <DesktopNavLink active={activeTab === 'uni'} onClick={() => setActiveTab('uni')} icon={<GraduationCap size={20} />} label="Университет" />
+            <DesktopNavLink active={activeTab === 'finance'} onClick={() => setActiveTab('finance')} icon={<DollarSign size={20} />} label="Қаржы & Депозит" />
+            <DesktopNavLink active={activeTab === 'notes'} onClick={() => setActiveTab('notes')} icon={<CheckSquare size={20} />} label="Жазбалар" />
+            </nav>
         </div>
-        <nav className="flex-1 px-4 space-y-2 mt-4">
-          <DesktopNavLink active={activeTab === 'work'} onClick={() => setActiveTab('work')} icon={<Briefcase size={20} />} label="Кесте & Сабақ" />
-          <DesktopNavLink active={activeTab === 'uni'} onClick={() => setActiveTab('uni')} icon={<GraduationCap size={20} />} label="Университет" />
-          <DesktopNavLink active={activeTab === 'finance'} onClick={() => setActiveTab('finance')} icon={<DollarSign size={20} />} label="Қаржы & Депозит" />
-          <DesktopNavLink active={activeTab === 'notes'} onClick={() => setActiveTab('notes')} icon={<CheckSquare size={20} />} label="Жазбалар" />
-        </nav>
-        <div className="p-6">
-            <button onClick={copyDataForAI} className="w-full mb-4 bg-gradient-to-r from-pink-500 to-rose-500 text-white p-3 rounded-xl shadow-md flex items-center justify-center gap-2 hover:opacity-90 transition font-medium text-sm">
-                <Sparkles size={18} /> AI-мен ақылдасу
-            </button>
+        
+        <div className="p-6 space-y-4">
             <div className="bg-gray-900 rounded-xl p-4 text-white shadow-lg">
                 <p className="text-xs opacity-60 mb-1 text-gray-300">Осы аптадағы баланс</p>
                 <p className="text-xl font-bold">{currentWeekBalance.toLocaleString()} ₸</p>
@@ -400,6 +388,14 @@ export default function App() {
                     <p className="text-sm font-medium text-purple-300">+{collectedMonthlyIncome.toLocaleString()} ₸</p>
                 </div>
             </div>
+            
+            <button onClick={copyDataForAI} className="w-full bg-gradient-to-r from-pink-500 to-rose-500 text-white p-3 rounded-xl shadow-md flex items-center justify-center gap-2 hover:opacity-90 transition font-medium text-sm">
+                <Sparkles size={18} /> AI-мен ақылдасу
+            </button>
+
+            <button onClick={clearAllData} className="w-full flex items-center justify-center gap-2 text-red-400 text-xs hover:text-red-600 transition p-2">
+                <RefreshCw size={14} /> Деректерді тазалау
+            </button>
         </div>
       </div>
 
