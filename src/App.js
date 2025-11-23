@@ -4,11 +4,22 @@ import { Calendar, CheckSquare, DollarSign, Plus, Trash2, Clock, Briefcase, Grad
 // --- ТҰРАҚТЫЛАР ---
 const TIMES = Array.from({ length: 15 }, (_, i) => i + 9); // 9:00 - 23:00
 
-// --- КӨМЕКШІ ФУНКЦИЯЛАР ---
+// --- КӨМЕКШІ ФУНКЦИЯЛАР (ТҮЗЕТІЛГЕН) ---
+
+// 1. Күнді дұрыс форматтау (Жергілікті уақыт бойынша)
+const formatDate = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const getStartOfWeek = (date) => {
   const d = new Date(date);
   const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Дүйсенбіге туралау
+  // Дүйсенбіні (1) апта басы ету логикасы:
+  // Егер жексенбі (0) болса, 6 күн шегереміз. Басқа күндер үшін (day-1) күн шегереміз.
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1); 
   const newDate = new Date(d.setDate(diff));
   newDate.setHours(0, 0, 0, 0);
   return newDate;
@@ -24,11 +35,11 @@ const getWeekDays = (startDate) => {
   return days;
 };
 
-const formatDate = (date) => date.toISOString().split('T')[0]; // YYYY-MM-DD
 const formatDisplayDate = (date) => {
   const d = new Date(date);
   return `${d.getDate()}.${d.getMonth() + 1}`;
 };
+
 const getMonthName = (date) => {
   const months = ['Қаңтар', 'Ақпан', 'Наурыз', 'Сәуір', 'Мамыр', 'Маусым', 'Шілде', 'Тамыз', 'Қыркүйек', 'Қазан', 'Қараша', 'Желтоқсан'];
   return months[date.getMonth()];
@@ -45,45 +56,46 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('work');
   
   // --- ДЕРЕКТЕР (STATE) ---
+  // v5 нұсқасы - ескі қате даталардан тазару үшін жаңа база
   const [currentDate, setCurrentDate] = useState(new Date()); 
 
   const [students, setStudents] = useState(() => {
-    const saved = localStorage.getItem('myApp_students_v4');
+    const saved = localStorage.getItem('myApp_students_v5');
     return saved ? JSON.parse(saved) : INITIAL_STUDENTS;
   });
 
   const [completedLessons, setCompletedLessons] = useState(() => {
-    const saved = localStorage.getItem('myApp_completed_lessons_v4');
+    const saved = localStorage.getItem('myApp_completed_lessons_v5');
     return saved ? JSON.parse(saved) : {};
   });
 
   const [deposit, setDeposit] = useState(() => {
-    const saved = localStorage.getItem('myApp_deposit_v4');
+    const saved = localStorage.getItem('myApp_deposit_v5');
     return saved ? parseFloat(saved) : 0;
   });
 
   const [uniTasks, setUniTasks] = useState(() => {
-    const saved = localStorage.getItem('myApp_tasks_v4');
+    const saved = localStorage.getItem('myApp_tasks_v5');
     return saved ? JSON.parse(saved) : [];
   });
 
   const [transactions, setTransactions] = useState(() => {
-    const saved = localStorage.getItem('myApp_transactions_v4');
+    const saved = localStorage.getItem('myApp_transactions_v5');
     return saved ? JSON.parse(saved) : [];
   });
 
   const [notes, setNotes] = useState(() => {
-    const saved = localStorage.getItem('myApp_notes_v4');
+    const saved = localStorage.getItem('myApp_notes_v5');
     return saved ? JSON.parse(saved) : [];
   });
 
   // --- LOCAL STORAGE SAVE ---
-  useEffect(() => { localStorage.setItem('myApp_students_v4', JSON.stringify(students)); }, [students]);
-  useEffect(() => { localStorage.setItem('myApp_completed_lessons_v4', JSON.stringify(completedLessons)); }, [completedLessons]);
-  useEffect(() => { localStorage.setItem('myApp_deposit_v4', JSON.stringify(deposit)); }, [deposit]);
-  useEffect(() => { localStorage.setItem('myApp_tasks_v4', JSON.stringify(uniTasks)); }, [uniTasks]);
-  useEffect(() => { localStorage.setItem('myApp_transactions_v4', JSON.stringify(transactions)); }, [transactions]);
-  useEffect(() => { localStorage.setItem('myApp_notes_v4', JSON.stringify(notes)); }, [notes]);
+  useEffect(() => { localStorage.setItem('myApp_students_v5', JSON.stringify(students)); }, [students]);
+  useEffect(() => { localStorage.setItem('myApp_completed_lessons_v5', JSON.stringify(completedLessons)); }, [completedLessons]);
+  useEffect(() => { localStorage.setItem('myApp_deposit_v5', JSON.stringify(deposit)); }, [deposit]);
+  useEffect(() => { localStorage.setItem('myApp_tasks_v5', JSON.stringify(uniTasks)); }, [uniTasks]);
+  useEffect(() => { localStorage.setItem('myApp_transactions_v5', JSON.stringify(transactions)); }, [transactions]);
+  useEffect(() => { localStorage.setItem('myApp_notes_v5', JSON.stringify(notes)); }, [notes]);
 
   // --- UI STATE ---
   const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
@@ -110,10 +122,18 @@ export default function App() {
 
   const calculateRealIncome = (startDate, endDate) => {
     let total = 0;
+    
+    // Салыстыру үшін уақыттарды тазалаймыз (тек күндер қалу үшін)
+    const startCheck = new Date(startDate); startCheck.setHours(0,0,0,0);
+    const endCheck = new Date(endDate); endCheck.setHours(23,59,59,999);
+
     Object.keys(completedLessons).forEach(key => {
       const [studentId, dateStr] = key.split('_');
+      // dateStr жергілікті "YYYY-MM-DD" форматында
       const lessonDate = new Date(dateStr);
-      if (lessonDate >= startDate && lessonDate <= endDate && completedLessons[key]) {
+      lessonDate.setHours(12, 0, 0, 0); // Сағатты ортаға қоямыз, ауытқу болмас үшін
+
+      if (lessonDate >= startCheck && lessonDate <= endCheck && completedLessons[key]) {
         const student = students.find(s => s.id === parseInt(studentId));
         if (student) total += getLessonCost(student);
       }
@@ -185,7 +205,7 @@ export default function App() {
                   type: 'income',
                   amount: parseInt(student.amount),
                   category: `Айлық: ${student.name}`, 
-                  date: new Date().toISOString().split('T')[0]
+                  date: formatDate(new Date()) // Түзетілген күн
               };
               setTransactions(prev => [...prev, newTx]);
               setConfirmModal({ isOpen: false, message: '', onConfirm: null });
@@ -200,7 +220,6 @@ export default function App() {
       }
   };
 
-  // --- САБАҚТЫ КЕСТЕДЕН ЖЕКЕ ӨШІРУ ---
   const deleteScheduleSlot = (studentId, day, time) => {
       setConfirmModal({
           isOpen: true,
@@ -208,7 +227,6 @@ export default function App() {
           onConfirm: () => {
               setStudents(prev => prev.map(s => {
                   if (s.id === studentId) {
-                      // Сол күнгі сол уақытты ғана алып тастаймыз
                       const newSchedule = s.schedule.filter(slot => !(slot.day === day && slot.time === time));
                       return { ...s, schedule: newSchedule };
                   }
@@ -279,7 +297,7 @@ export default function App() {
       const updated = [...newStudent.schedule]; updated.splice(index, 1); setNewStudent({...newStudent, schedule: updated});
   };
   const addTask = () => { if (newTask.title) { setUniTasks([...uniTasks, { ...newTask, id: Date.now(), completed: false }]); setNewTask({ title: '', deadline: '' }); }};
-  const addTransaction = () => { if (newTransaction.amount) { setTransactions([...transactions, { ...newTransaction, id: Date.now(), amount: parseInt(newTransaction.amount), date: new Date().toISOString().split('T')[0] }]); setNewTransaction({ type: 'expense', amount: '', category: '' }); }};
+  const addTransaction = () => { if (newTransaction.amount) { setTransactions([...transactions, { ...newTransaction, id: Date.now(), amount: parseInt(newTransaction.amount), date: formatDate(new Date()) }]); setNewTransaction({ type: 'expense', amount: '', category: '' }); }};
   const deleteTransaction = (id) => { setTransactions(prev => prev.filter(t => t.id !== id)); };
   
   const addNote = () => { 
@@ -323,7 +341,7 @@ export default function App() {
               <div className="p-3 text-sm font-medium text-gray-400 border-r flex items-center justify-center">{time}:00</div>
               {weekDays.map((date, index) => {
                 const dayName = WEEK_DAYS_KZ[index];
-                const dateStr = formatDate(date);
+                const dateStr = formatDate(date); // ТҮЗЕТІЛГЕН КҮН
                 const student = students.find(s => s.schedule.some(sl => sl.day === dayName && sl.time === time));
                 const lessonKey = student ? `${student.id}_${dateStr}_${time}` : null;
                 const isCompleted = lessonKey ? completedLessons[lessonKey] : false;
@@ -340,10 +358,9 @@ export default function App() {
                             : 'bg-white border-indigo-100 text-gray-600 hover:border-indigo-300 hover:shadow-md'
                           }`}
                       >
-                        {/* ЖЕКЕ САБАҚТЫ ӨШІРУ БАТЫРМАСЫ */}
                         <button 
                             onClick={(e) => {
-                                e.stopPropagation(); // Attendance toggle істемеуі үшін
+                                e.stopPropagation(); 
                                 deleteScheduleSlot(student.id, dayName, time);
                             }}
                             className="absolute top-1 right-1 p-1 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10"
