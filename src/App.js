@@ -24,11 +24,13 @@ const getWeekDays = (startDate) => {
   return days;
 };
 
-const formatDate = (date) => date.toISOString().split('T')[0]; // YYYY-MM-DD
-const formatDisplayDate = (date) => {
-  const d = new Date(date);
-  return `${d.getDate()}.${d.getMonth() + 1}`;
-};
+const formatDate = (date) => {
+    const d = new Date(date);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
 const getMonthName = (date) => {
   const months = ['Қаңтар', 'Ақпан', 'Наурыз', 'Сәуір', 'Мамыр', 'Маусым', 'Шілде', 'Тамыз', 'Қыркүйек', 'Қазан', 'Қараша', 'Желтоқсан'];
   return months[date.getMonth()];
@@ -112,7 +114,11 @@ export default function App() {
     let total = 0;
     Object.keys(completedLessons).forEach(key => {
       const [studentId, dateStr] = key.split('_');
-      const lessonDate = new Date(dateStr);
+      
+      // ТУРАЛАУ: String-ті бөлшектеп, жергілікті уақыт жасаймыз
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const lessonDate = new Date(y, m - 1, d); 
+      
       if (lessonDate >= startDate && lessonDate <= endDate && completedLessons[key]) {
         const student = students.find(s => s.id === parseInt(studentId));
         if (student) total += getLessonCost(student);
@@ -131,9 +137,10 @@ export default function App() {
 
   // 1. АПТАЛЫҚ ЕСЕП
   const weeklyTransactions = transactions.filter(t => {
-    const tDate = new Date(t.date);
-    const tTime = tDate.getTime();
-    return tTime >= currentWeekStart.getTime() && tTime <= currentWeekEnd.getTime();
+    // ТУРАЛАУ: String-ті бөлшектеп, жергілікті уақыт жасаймыз
+    const [y, m, d] = t.date.split('-').map(Number);
+    const tDate = new Date(y, m - 1, d);
+    return tDate >= currentWeekStart && tDate <= currentWeekEnd;
   });
   const weeklyOtherIncome = weeklyTransactions.filter(t => t.type === 'income').reduce((acc, curr) => acc + curr.amount, 0);
   const weeklyExpenses = weeklyTransactions.filter(t => t.type === 'expense').reduce((acc, curr) => acc + curr.amount, 0);
