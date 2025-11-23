@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, CheckSquare, DollarSign, Plus, Trash2, Clock, Briefcase, GraduationCap, X, TrendingDown, Sparkles, ChevronLeft, ChevronRight, Save, CheckCircle, AlertCircle, CreditCard } from 'lucide-react';
+import { Calendar, CheckSquare, DollarSign, Plus, Trash2, Clock, Briefcase, GraduationCap, X, TrendingDown, Sparkles, ChevronLeft, ChevronRight, Save, CheckCircle, AlertCircle, CreditCard, PieChart } from 'lucide-react';
 
 // --- ТҰРАҚТЫЛАР ---
 const TIMES = Array.from({ length: 15 }, (_, i) => i + 9); // 9:00 - 23:00
@@ -127,28 +127,37 @@ export default function App() {
     return Math.round(total);
   };
 
-  // Ағымдағы апта күндері
+  // КҮНДЕРДІ АНЫҚТАУ
   const currentWeekStart = getStartOfWeek(currentDate);
   const currentWeekEnd = new Date(currentWeekStart);
   currentWeekEnd.setDate(currentWeekEnd.getDate() + 6);
   currentWeekEnd.setHours(23, 59, 59);
 
-  // Осы аптадағы транзакцияларды сүзу
+  const currentMonthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+  const currentMonthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59);
+
+  // 1. АПТАЛЫҚ ЕСЕП
   const weeklyTransactions = transactions.filter(t => {
     const tDate = new Date(t.date);
     const tTime = tDate.getTime();
     return tTime >= currentWeekStart.getTime() && tTime <= currentWeekEnd.getTime();
   });
-
-  // Транзакциялардан түскен кіріс
   const weeklyOtherIncome = weeklyTransactions.filter(t => t.type === 'income').reduce((acc, curr) => acc + curr.amount, 0);
   const weeklyExpenses = weeklyTransactions.filter(t => t.type === 'expense').reduce((acc, curr) => acc + curr.amount, 0);
-
-  // --- ҚАРЖЫЛЫҚ КӨРСЕТКІШТЕР ---
   const realWeeklyLessonIncome = calculateRealIncome(currentWeekStart, currentWeekEnd);
   const currentWeekBalance = realWeeklyLessonIncome + weeklyOtherIncome - weeklyExpenses;
 
-  // --- АЙЛЫҚ ОҚУШЫЛАРДАН ТҮСКЕН НАҚТЫ АҚША ---
+  // 2. АЙЛЫҚ ЕСЕП (ЖАҢА КАРТОЧКА ҮШІН)
+  const monthlyTransactions = transactions.filter(t => {
+    const tDate = new Date(t.date);
+    return tDate >= currentMonthStart && tDate <= currentMonthEnd;
+  });
+  const monthlyOtherIncome = monthlyTransactions.filter(t => t.type === 'income').reduce((acc, curr) => acc + curr.amount, 0);
+  const monthlyExpenses = monthlyTransactions.filter(t => t.type === 'expense').reduce((acc, curr) => acc + curr.amount, 0);
+  const realMonthlyLessonIncome = calculateRealIncome(currentMonthStart, currentMonthEnd);
+  const currentMonthBalance = realMonthlyLessonIncome + monthlyOtherIncome - monthlyExpenses;
+
+  // 3. АЙЛЫҚ ОҚУШЫЛАРДАН ТҮСКЕН АҚША (ИНФО ҮШІН)
   const collectedMonthlyIncome = transactions
     .filter(t => t.type === 'income' && t.category.startsWith('Айлық') && isSameMonth(new Date(t.date), currentDate))
     .reduce((acc, t) => acc + t.amount, 0);
@@ -197,16 +206,16 @@ export default function App() {
     const summary = `Сәлем! Менің қаржылық есебім (${getMonthName(currentDate)} айы):
 
 📅 Апта: ${formatDisplayDate(currentWeekStart)} - ${formatDisplayDate(currentWeekEnd)}
-💰 АПТАЛЫҚ БАЛАНС:
-- Сабақтардан: ${realWeeklyLessonIncome.toLocaleString()} ₸
-- Басқа кірістер: ${weeklyOtherIncome.toLocaleString()} ₸
-- Шығыстар: ${weeklyExpenses.toLocaleString()} ₸
-= ТАЗА ПАЙДА: ${currentWeekBalance.toLocaleString()} ₸
+💰 АПТАЛЫҚ БАЛАНС: ${currentWeekBalance.toLocaleString()} ₸
+💰 АЙЛЫҚ БАЛАНС: ${currentMonthBalance.toLocaleString()} ₸
 
-📦 АЙЛЫҚ ОҚУШЫЛАР (Осы айда): ${collectedMonthlyIncome.toLocaleString()} ₸
-🏦 ДЕПОЗИТ: ${deposit.toLocaleString()} ₸
+📊 Деректер:
+- Апталық сабақтар: ${realWeeklyLessonIncome.toLocaleString()} ₸
+- Осы айда жиналған айлық төлемдер: ${collectedMonthlyIncome.toLocaleString()} ₸
+- Шығыстар (Апта/Ай): ${weeklyExpenses.toLocaleString()} / ${monthlyExpenses.toLocaleString()} ₸
+- Депозит: ${deposit.toLocaleString()} ₸
 
-Менің мақсатым ақша жинау. Кеңес берші.`;
+Кеңес берші.`;
 
     const copyToClipboard = (text) => {
         if (navigator.clipboard && window.isSecureContext) {
@@ -241,7 +250,7 @@ export default function App() {
     setNewStudent({ name: '', schedule: [], paymentType: 'monthly', amount: '' });
   };
   const deleteStudent = (id) => {
-     setConfirmModal({ isOpen: true, message: 'Оқушыны өшіресіз бе?', onConfirm: () => {
+     setConfirmModal({ isOpen: true, message: 'Бұл оқушыны және оның барлық деректерін өшіресіз бе?', onConfirm: () => {
         setStudents(prev => prev.filter(s => s.id !== id));
         setConfirmModal({ isOpen: false, message: '', onConfirm: null });
     }});
@@ -528,23 +537,25 @@ export default function App() {
 
         {activeTab === 'finance' && (
             <div className="space-y-6 animate-fadeIn">
-                {/* ҚАРЖЫ КАРТОЧКАЛАРЫ */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* ҚАРЖЫ КАРТОЧКАЛАРЫ - ЖАҢАРТЫЛҒАН GRID */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl p-5 text-white shadow-lg">
                         <p className="text-xs opacity-80 uppercase mb-2">Осы аптадағы баланс</p>
                         <h3 className="text-3xl font-bold">{currentWeekBalance.toLocaleString()} ₸</h3>
-                        <p className="text-xs mt-2 opacity-60">Сабақ + Басқа кіріс - Шығыс</p>
+                        <p className="text-xs mt-2 opacity-60">Апталық есеп</p>
+                    </div>
+
+                    {/* ЖАҢА КАРТОЧКА: АЙЛЫҚ БАЛАНС */}
+                    <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl p-5 text-white shadow-lg">
+                        <div className="flex items-center gap-2 mb-2 opacity-90"><PieChart size={18}/><span className="text-xs font-bold uppercase">Осы айдағы баланс</span></div>
+                        <h3 className="text-3xl font-bold">{currentMonthBalance.toLocaleString()} ₸</h3>
+                        <p className="text-xs mt-2 opacity-60">{getMonthName(currentDate)} айы</p>
                     </div>
                     
                     <div className="bg-purple-50 rounded-xl p-5 shadow-sm border border-purple-100">
                         <div className="flex items-center gap-2 mb-2 text-purple-700"><Briefcase size={18}/><span className="text-xs font-bold uppercase">Айлық оқушылардан</span></div>
                         <h3 className="text-2xl font-bold text-purple-900">{collectedMonthlyIncome.toLocaleString()} ₸</h3>
                         <p className="text-xs text-purple-400 mt-1">Тек қабылданған төлемдер</p>
-                    </div>
-
-                    <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-                         <div className="flex items-center gap-2 mb-2 text-red-500"><TrendingDown size={18}/><span className="text-xs font-bold uppercase">Шығыстар (Осы апта)</span></div>
-                         <h3 className="text-2xl font-bold text-gray-800">{weeklyExpenses.toLocaleString()} ₸</h3>
                     </div>
 
                     <div className="bg-yellow-50 rounded-xl p-5 shadow-sm border border-yellow-100">
