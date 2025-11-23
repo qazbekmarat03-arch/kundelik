@@ -45,7 +45,6 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('work');
   
   // --- ДЕРЕКТЕР (STATE) ---
-  // ЕСКЕРТУ: v4-ке ауыстырдым, ескі деректерден тазару үшін
   const [currentDate, setCurrentDate] = useState(new Date()); 
 
   const [students, setStudents] = useState(() => {
@@ -201,6 +200,25 @@ export default function App() {
       }
   };
 
+  // --- САБАҚТЫ КЕСТЕДЕН ЖЕКЕ ӨШІРУ ---
+  const deleteScheduleSlot = (studentId, day, time) => {
+      setConfirmModal({
+          isOpen: true,
+          message: 'Тек осы сабақ уақытын кестеден өшіресіз бе?',
+          onConfirm: () => {
+              setStudents(prev => prev.map(s => {
+                  if (s.id === studentId) {
+                      // Сол күнгі сол уақытты ғана алып тастаймыз
+                      const newSchedule = s.schedule.filter(slot => !(slot.day === day && slot.time === time));
+                      return { ...s, schedule: newSchedule };
+                  }
+                  return s;
+              }));
+              setConfirmModal({ isOpen: false, message: '', onConfirm: null });
+          }
+      });
+  };
+
   const copyDataForAI = () => {
     const summary = `Сәлем! Менің қаржылық есебім (${getMonthName(currentDate)} айы):
     
@@ -316,13 +334,25 @@ export default function App() {
                     {student && (
                       <div 
                         onClick={() => toggleLessonCompletion(student.id, dateStr, time)}
-                        className={`w-full h-full rounded-lg p-2 text-xs flex flex-col justify-between cursor-pointer transition-all shadow-sm border
+                        className={`w-full h-full rounded-lg p-2 text-xs flex flex-col justify-between cursor-pointer transition-all shadow-sm border relative
                           ${isCompleted 
                             ? 'bg-green-100 border-green-200 text-green-800 hover:bg-green-200' 
                             : 'bg-white border-indigo-100 text-gray-600 hover:border-indigo-300 hover:shadow-md'
                           }`}
                       >
-                        <div className="flex justify-between items-start">
+                        {/* ЖЕКЕ САБАҚТЫ ӨШІРУ БАТЫРМАСЫ */}
+                        <button 
+                            onClick={(e) => {
+                                e.stopPropagation(); // Attendance toggle істемеуі үшін
+                                deleteScheduleSlot(student.id, dayName, time);
+                            }}
+                            className="absolute top-1 right-1 p-1 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                            title="Сабақты кестеден өшіру"
+                        >
+                            <X size={14} />
+                        </button>
+
+                        <div className="flex justify-between items-start pr-4">
                             <span className="font-bold truncate">{student.name}</span>
                             {isCompleted ? <CheckCircle size={14} className="text-green-600"/> : <div className="w-3 h-3 rounded-full border-2 border-gray-300"></div>}
                         </div>
